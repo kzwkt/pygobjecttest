@@ -1,0 +1,741 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+import sys
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('AppIndicator3', '0.1')
+from gi.repository import Gtk ,GObject
+from gi.repository import AppIndicator3 
+APPINDICATOR_ID = 'cndbappindicator'
+import datetime
+import calendar
+
+### BEGIN LICENSE
+# Copyright (C) 2011 Shritesh Bhattarai shriteshb@gmail.com
+# Copyright (C) 2014 Sagar Chalise  <chalisesagar AT  gmail  DOT com>
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3, as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranties of
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
+# PURPOSE.  See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
+
+#  ENG_NEP_MONTHS = ('जनवरी', 'फेब्रुअरी', 'मार्च', 'अप्रिल', 'मे', 'जून', 'जुलै', 'अगस्त', 'सेप्टेम्वर', 'अक्टोबर', 'नोवेम्बर', 'डीसेम्वर')
+NEP_MONTHS = ("बैशाख", "जेष्ठ", "असार", "श्रावण", "भाद्र", "असोज", "कार्तिक", "मंसिर", "पौष", "माघ", "फाल्गुन", "चैत्र")
+NEP_DIGITS_MAP = {'0': "०", '1': "१", '2': "२", '3': "३", '4': "४", '5': "५", '6': "६", '7': "७", '8': "८", '9': "९"}
+NEP_DAYS = ("आइतवार", "सोमवार", "मंगलवार", "बुधवार", "बिहिवार", "शुक्रवार", "शनिवार")
+NEP_DAY_MAP = []
+add = 0
+for i, v in enumerate(calendar.day_abbr):
+    if i == 0:
+        if v == 'Mon':
+            NEP_DAY_MAP.append(('Sun', NEP_DAYS[0]))
+            add = 1
+    if add:
+        if i <= 5:
+            i = i + add
+        else:
+            break
+    NEP_DAY_MAP.append((v, NEP_DAYS[i]))
+DAY_ABBR = [k[0]  for k in NEP_DAY_MAP]
+
+class NepaliDateConverter:
+    '''
+    A class to convert Bikram Samwat (B.S.) to A.D. and vice versa.
+
+    Usage:
+    converter = NepaliDateConverter()
+    print converter.ad2bs((1995,9,12))
+    print converter.bs2ad((2052,05,27))
+
+    Range:
+    1944/4/1 A.D. to 2043/4/13 A.D.
+    2000/9/17 B.S. to 2099/12/20 B.S.
+
+    bs : a dictionary that contains the number of days in each month of the B.S. year
+    bs_equiv, ad_equiv  : The B.S. and A.D. equivalent dates for counting and calculation
+
+    '''
+    (bs_equiv, ad_equiv) = ((2000,9,17),(1944,1,1))
+    bs = {}
+    bs[2000]=(30,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2001]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2002]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2003]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2004]=(30,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2005]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2006]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2007]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2008]=(31,31,31,32,31,31,29,30,30,29,29,31)
+    bs[2009]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2010]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2011]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2012]=(31,31,31,32,31,31,29,30,30,29,30,30)
+    bs[2013]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2014]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2015]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2016]=(31,31,31,32,31,31,29,30,30,29,30,30)
+    bs[2017]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2018]=(31,32,31,32,31,30,30,29,30,29,30,30)
+    bs[2019]=(31,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2020]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2021]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2022]=(31,32,31,32,31,30,30,30,29,29,30,30)
+    bs[2023]=(31,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2024]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2025]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2026]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2027]=(30,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2028]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2029]=(31,31,32,31,32,30,30,29,30,29,30,30)
+    bs[2030]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2031]=(30,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2032]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2033]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2034]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2035]=(30,32,31,32,31,31,29,30,30,29,29,31)
+    bs[2036]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2037]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2038]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2039]=(31,31,31,32,31,31,29,30,30,29,30,30)
+    bs[2040]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2041]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2042]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2043]=(31,31,31,32,31,31,29,30,30,29,30,30)
+    bs[2044]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2045]=(31,32,31,32,31,30,30,29,30,29,30,30)
+    bs[2046]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2047]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2048]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2049]=(31,32,31,32,31,30,30,30,29,29,30,30)
+    bs[2050]=(31,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2051]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2052]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2053]=(31,32,31,32,31,30,30,30,29,29,30,30)
+    bs[2054]=(31,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2055]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2056]=(31,31,32,31,32,30,30,29,30,29,30,30)
+    bs[2057]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2058]=(30,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2059]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2060]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2061]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2062]=(30,32,31,32,31,31,29,30,29,30,29,31)
+    bs[2063]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2064]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2065]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2066]=(31,31,31,32,31,31,29,30,30,29,29,31)
+    bs[2067]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2068]=(31,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2069]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2070]=(31,31,31,32,31,31,29,30,30,29,30,30)
+    bs[2071]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2072]=(31,32,31,32,31,30,30,29,30,29,30,30)
+    bs[2073]=(31,32,31,32,31,30,30,30,29,29,30,31)
+    bs[2074]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2075]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2076]=(31,32,31,32,31,30,30,30,29,29,30,30)
+    bs[2077]=(31,32,31,32,31,30,30,30,29,30,29,31)
+    bs[2078]=(31,31,31,32,31,31,30,29,30,29,30,30)
+    bs[2079]=(31,31,32,31,31,31,30,29,30,29,30,30)
+    bs[2080]=(31,32,31,32,31,30,30,30,29,29,30,30)
+    bs[2081]=(31,31,32,32,31,30,30,30,29,30,30,30)
+    bs[2082]=(30,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2083]=(31,31,32,31,31,30,30,30,29,30,30,30)
+    bs[2084]=(31,31,32,31,31,30,30,30,29,30,30,30)
+    bs[2085]=(31,32,31,32,30,31,30,30,29,30,30,30)
+    bs[2086]=(30,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2087]=(31,31,32,31,31,31,30,30,29,30,30,30)
+    bs[2088]=(30,31,32,32,30,31,30,30,29,30,30,30)
+    bs[2089]=(30,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2090]=(30,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2091]=(31,31,32,31,31,31,30,30,29,30,30,30)
+    bs[2092]=(30,31,32,32,31,30,30,30,29,30,30,30)
+    bs[2093]=(30,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2094]=(31,31,32,31,31,30,30,30,29,30,30,30)
+    bs[2095]=(31,31,32,31,31,31,30,29,30,30,30,30)
+    bs[2096]=(30,31,32,32,31,30,30,29,30,29,30,30)
+    bs[2097]=(31,32,31,32,31,30,30,30,29,30,30,30)
+    bs[2098]=(31,31,32,31,31,31,29,30,29,30,29,31)
+    bs[2099]=(31,31,32,31,31,31,30,29,29,30,30,30)
+
+    nepday = {'Sun': "आइतवार", 'Mon': "सोमवार", 'Tue': "मंगलवार",
+                'Wed': "बुधवार", 'Thu': "बिहिवार", 'Fri': "शुक्रवार", 'Sat': "शनिवार"}
+
+    @staticmethod
+    def date_from_tuple(tuple_to_convert):
+        '''
+        Returns the given tuple as datetime.date object
+
+        tuple_to_convert : A tuple in the format (year,month,day)
+
+        '''
+        (year, month, day) = tuple_to_convert
+        return datetime.date(year, month, day)
+
+    @staticmethod
+    def tuple_from_date(date_to_convert):
+        '''
+        Returns the given date object as tuple in the format (year,month,day)
+
+        date_to_convert : A date object
+
+        '''
+        assert isinstance(date_to_convert, (datetime.date, datetime.datetime)), "date_to_convert should be date object"
+        return (date_to_convert.year, date_to_convert.month, date_to_convert.day)
+        
+    def count_ad_days(self,begin_ad_date,end_ad_date):
+        '''
+        Returns the number of days between the two given A.D. dates.
+
+        begin_ad_date : A tuple in the format (year,month,day) that specify the date to start counting from.
+        end_ad_date : A tuple in the format (year,month,day) that specify the date to end counting.
+
+        '''
+        date_begin = self.date_from_tuple(begin_ad_date)
+        date_end = self.date_from_tuple(end_ad_date)
+        delta = date_end - date_begin
+        return delta.days
+
+    def count_bs_days(self,begin_bs_date,end_bs_date):
+        '''
+        Returns the number of days between the two given B.S. dates.
+
+        begin_ad_date : A tuple in the format (year,month,day) that specify the date to start counting from.
+        end_ad_date : A tuple in the format (year,month,day) that specify the date to end counting.
+
+        Algorithm:
+
+        Its not the piece of algorithm, but it works for this program..
+
+        1) First add total days in all the years
+
+        2) Subtract the days from first (n-1) months of the beginning year
+
+        3) Add the number of days from the last month of the beginning year
+
+        4) Subtract the days from the last months from the end year
+
+        5) Add the beginning days excluding the day itself
+
+        6) Add the last remaining days excluding the day itself
+
+
+        NOTE:
+        Tuple in the dictionary starts from 0
+        The range(a,b) function starts from a and ends at b-1
+        '''
+        begin_year, begin_month, begin_day =  begin_bs_date
+        end_year, end_month, end_day = end_bs_date
+        days = 0
+        #1) First add total days in all the years
+        for year in range(begin_year, end_year + 1):
+            for days_in_month in self.bs[year]:
+                days = days + days_in_month
+        #2) Subtract the days from first (n-1) months of the beginning year
+        for month in range(begin_month):
+            days = days - self.bs[begin_year][month]
+        #3) Add the number of days from the last month of the beginning year
+        days = days + self.bs[begin_year][12-1]
+        #4) Subtract the days from the last months from the end year
+        for month in range(end_month - 1,12):
+            days = days - self.bs[end_year][month]
+        #5) Add the beginning days excluding the day itself
+        days = days - begin_day - 1
+        #5) Add the last remaining days excluding the day itself
+        days = days + end_day - 1
+        return days
+
+    def add_ad_days(self,ad_date,num_days):
+        '''
+        Adds the given number of days to the given A.D. date and returns it as a tuple in the format (year,month,day)
+
+        ad_date : A tuple in the format (year,month,day)
+        num_days : Number of days to add to the given date
+
+        '''
+        date = self.date_from_tuple(ad_date)
+        day = datetime.timedelta(days=num_days)
+        return self.tuple_from_date(date + day)
+
+    def add_bs_days(self,bs_date,num_days):
+        '''
+        Adds the given number of days to the given B.S. date and returns it as a tuple in the format (year,month,day)
+
+        bs_date : a tuple in the format (year,month,day)
+        num_days : Number of days to add to the given date
+
+        Algorithm:
+        1) Add the total number of days to the original days
+
+        2) Until the number of days becomes applicable to the current month, subtract the days by the number of days in the current month and increase the month
+
+        3) If month reaches 12, increase the year by 1 and set the month to 1
+
+        Note:
+        Tuple in the dictionary starts from 0
+        '''
+        (year, month, day) = bs_date
+        #1) Add the total number of days to the original days
+        day = day + num_days
+        #2) Until the number of days becomes applicable to the current month, subtract the days by the number of days in the current month and increase the month
+        while day > self.bs[year][month - 1]:
+            day = day - self.bs[year][month- 1]
+            month = month + 1
+            #3) If month reaches 12, increase the year by 1 and set the month to 1
+            if month > 12:
+                month = 1
+                year = year + 1
+        return (year, month, day)
+
+    def bs_to_ad(self, bs_date):
+        '''
+        Returns the A.D. equivalent date as a tuple in the format (year,month,day) if the date is within range, else returns None
+
+        bs_date : A tuple in the format (year,month,day)
+
+        '''
+        (year, month, day) = bs_date
+        if (year not in range(2000, 2099) or month not in range(12) or day not in range(1, 33)) or not (year == 2000 and month == 9 and day < 17):
+            date_delta = self.count_bs_days(self.bs_equiv, bs_date)
+            return self.add_ad_days(self.ad_equiv, date_delta)
+
+    def ad_to_bs(self, ad_date):
+        '''
+        Returns the B.S. equivalent date as a tuple in the format (year,month,day) if the date is within range, else returns None
+
+        bs_date : An tuple in the format (year,month,day)
+        '''
+        (year, month, day) = ad_date
+        if (year in range(1944, 2043) or month in range(1, 12) or day in range(1, 31)) or not (year == 2043 and month == 4 and day > 13):
+            day = self.date_from_tuple(ad_date).strftime("%a")
+            date_delta = self.count_ad_days(self.ad_equiv, ad_date)
+            return self.add_bs_days(self.bs_equiv, date_delta) + (day,)
+
+    @staticmethod
+    def eng_to_nep_num(n):
+        numstr = str(n)
+        return "".join(NEP_DIGITS_MAP[ch] for ch in numstr)
+        
+    @staticmethod
+    def nep_to_eng_num(n):
+        numstr = str(n)
+        rndm = {v:k for k, v in NEP_DIGITS_MAP.items()}       
+        num = "".join(rndm[ch] for ch in numstr)
+        return int(num)
+
+    def get_today_bs(self):
+        return self.ad_to_bs(self.get_today_ad())
+
+    def get_today_ad(self):
+        return self.tuple_from_date(datetime.datetime.now())
+
+    @staticmethod
+    def get_total_day_of_month(year, month, is_ad=True):
+        if is_ad:
+            return calendar.monthrange(year, month)[1]
+        return NepaliDateConverter.bs[year][month]
+   
+    def get_today_bs_label(self, short=False):
+        nepday = None
+        if short:
+            nepday = {k: v.replace("वार", "") for k, v in NEP_DAY_MAP}
+        today = self.get_date_bs_label(self.get_today_bs(), nepday)
+        return today
+
+    def get_date_bs_label(self, date_tuple, nepday=None):
+        if nepday is None:
+            nepday = dict(NEP_DAY_MAP)
+        (y, m, d, dd) = date_tuple
+        day = nepday.get(dd)
+        return "{0} {1} {2}, {3}".format(self.eng_to_nep_num(d), NEP_MONTHS[m-1], self.eng_to_nep_num(y), day)
+
+    def get_date_ad_label(self, date_tuple):
+        return self.get_strftime(self.date_from_tuple(date_tuple))
+    
+    @staticmethod
+    def get_strftime(dt_obj):
+        return dt_obj.strftime("%A %-d %B, %Y")
+
+    @staticmethod
+    def get_today_ad_label():
+        return NepaliDateConverter.get_strftime(datetime.datetime.now())
+        
+
+class ConverterDialog(Gtk.Dialog):
+    
+    def ad_to_bs_calendar(self, **kwargs):
+        self.cal = Gtk.Calendar()
+        self.cal.connect("day-selected", self.show_cal_converted_date, kwargs)
+        self.cal.connect("month_changed", self.show_cal_converted_date, kwargs)
+        self.cal.connect("next-year", self.show_cal_converted_date, kwargs)
+        self.cal.connect("prev-year", self.show_cal_converted_date, kwargs)
+        self.cal.connect("next-month", self.show_cal_converted_date, kwargs)
+        self.cal.connect("prev-month", self.show_cal_converted_date, kwargs)
+        self.box.add(self.cal)
+    
+    @staticmethod
+    def can_ad_converted(year):
+        ad_start = NepaliDateConverter.ad_equiv[0]
+        ad_end = ad_start + len(NepaliDateConverter.bs)
+        return ad_start <= year <= ad_end
+    
+    @staticmethod
+    def can_bs_converted(year):
+        bs_start = NepaliDateConverter.bs_equiv[0]
+        bs_end = bs_start + len(NepaliDateConverter.bs)
+        return bs_start <= year <= bs_end
+            
+    
+    def show_cal_converted_date(self, cal, user_data):
+        date = cal.get_date()
+        if not self.can_ad_converted(date.year):
+            return
+        ad_to_bs_tuple = self.converter.ad_to_bs((date.year, date.month+1, date.day))
+        value = self.converter.get_date_bs_label(ad_to_bs_tuple)
+        value = '<span foreground="green" size="large">%s</span>' % value
+        today = datetime.date.today()
+        if today != datetime.date(year=date.year, month=(date.month+1), day=date.day):
+            value += "\n<span foreground='purple'><small><i>{}: {}</i></small></span>".format(today.strftime("%b %d, %Y"), self.converter.get_today_bs_label())
+        self.date_label.set_markup(value)
+        
+    def nepali_cal_flowbox(self, today=None, month=None, year=None, today_ad=None):
+        today_bs = self.converter.get_today_bs()
+        if not today:
+            today = today_bs[2]
+        if today != 1:
+            if not today_ad:
+                today_ad = datetime.date.today()
+            today_bs = self.converter.ad_to_bs(self.converter.tuple_from_date(today_ad-datetime.timedelta(days=today-1)))
+        if not month:
+            month = today_bs[1]
+        if not year:
+            year = today_bs[0]
+        day = today_bs[3]
+        upper_day = self.converter.get_total_day_of_month(year, month-1, False)
+        childs = self.flowbox.get_children()
+        ti = DAY_ABBR.index(day)
+        for i, v in enumerate(NEP_DAY_MAP):
+            mk = '<span foreground="red"><small>{}</small></span>'.format(v[1].replace('वार', ''))
+            if i  == ti:
+                i = 0
+            elif i > ti:
+                i = i-ti
+            else:
+                i = (i+(7-ti))
+            try:
+                child = childs[i]
+            except:
+                dl = None
+            else:
+                dl = child.get_child()
+            if not dl:
+                dl = Gtk.Label()
+                self.flowbox.insert(dl, i)
+            dl.set_markup(mk)
+        for i in range(1, 33):
+            label = "".join(self.converter.eng_to_nep_num(i))
+            idx = i+6
+            try:
+                child = childs[idx]
+            except:
+                ddl = None
+                child = None
+            else:
+                ddl = child.get_child()
+            if not ddl:
+                ddl = Gtk.Button()
+            ddl.connect('clicked', self.on_day_button_clicked, i)
+            ddl.set_label(label)
+            if today == i:
+                label = '<span foreground="blue" size="large">%s</span>' % label
+                lab = ddl.get_child()
+                lab.set_markup(label)
+                ddl.set_sensitive(False)
+            if not child:
+                self.flowbox.insert(ddl, idx)
+            if i > upper_day:
+                ddl.set_sensitive(False)
+                ddl.hide()
+            elif today != i:
+                ddl.set_sensitive(True)
+                ddl.show()
+        
+    def __init__(self, title, **kwargs):
+        Gtk.Dialog.__init__(self, title=title, parent=None, flags=1)
+        self.set_resizable(False)
+        self.set_size_request(200, 200)
+        button = Gtk.Button("_Close", use_underline=True)
+        button.connect("clicked", self.on_close_clicked)
+        self.ad_to_bs = kwargs.get('ad_to_bs', False)
+        self.box = self.get_content_area()
+        self.converter = NepaliDateConverter()
+        self.date_label = Gtk.Label()
+        self.date_label.set_selectable(True)
+        hbox = Gtk.HBox()
+        self.date_entry = Gtk.SearchEntry()
+        self.date_entry.set_tooltip_text('YYYY/MM/DD or YYYY-MM-DD format')
+        self.date_entry.set_max_length(10)
+        bs_entry_button = Gtk.Button.new_from_icon_name('gtk-ok', Gtk.IconSize.BUTTON)
+        bs_entry_button.connect('clicked', self.date_entry_clicked)
+        self.date_entry.connect('search-changed', self.on_date_entry_cleared)
+        hbox.add(self.date_entry)
+        hbox.add(bs_entry_button)
+        self.box.pack_start(Gtk.HSeparator(), True, True, 1)
+        self.box.add(hbox)
+        if  self.ad_to_bs:
+            self.ad_to_bs_calendar()
+            value  = self.converter.get_today_bs_label()
+        else:
+            today_bs = self.converter.get_today_bs()
+            value = self.converter.get_today_ad_label()
+            self.combobox_month = Gtk.ComboBoxText()
+            for month in NEP_MONTHS:
+                self.combobox_month.append_text(month)
+            kwargs['today'] = today_bs[2]
+            renderer_text = Gtk.CellRendererText()
+            self.combobox_month.pack_start(renderer_text, True)
+            self.combobox_month.set_active(today_bs[1]-1)
+            self.combobox_month.add_attribute(renderer_text, "text", 1)
+            self.combobox_month.connect("changed", self.show_converted_date, kwargs)
+            box = Gtk.HBox()
+            self.goto_prev_button = Gtk.Button.new_with_label('<')
+            self.goto_prev_button.connect("clicked", self.on_prev_clicked_month, kwargs)
+            self.goto_next_button = Gtk.Button.new_with_label('>')
+            self.goto_next_button.connect("clicked", self.on_next_clicked_month, kwargs)
+            box.add(self.goto_prev_button)
+            box.add(self.combobox_month)
+            box.add(self.goto_next_button)
+            box.pack_start(Gtk.HSeparator(), False, False, 2)
+            box.pack_start(Gtk.HSeparator(), False, False, 2)
+            self.goto_prev_button1 = Gtk.Button.new_with_label('<')
+            self.goto_prev_button1.connect("clicked", self.on_prev_clicked_year, kwargs)
+            self.goto_next_button1 = Gtk.Button.new_with_label('>')
+            self.goto_next_button1.connect("clicked", self.on_next_clicked_year, kwargs)
+            self.year_label = Gtk.Label()
+            self.year_label.set_label(self.converter.eng_to_nep_num(today_bs[0]))
+            box.add(self.goto_prev_button1)
+            box.add(self.year_label)
+            box.add(self.goto_next_button1)
+            self.box.add(box)
+            self.flowbox = Gtk.FlowBox()
+            self.flowbox.set_valign(Gtk.Align.START)
+            self.flowbox.set_max_children_per_line(7)
+            self.flowbox.set_min_children_per_line(7)
+            self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+            self.nepali_cal_flowbox()
+            self.box.add(self.flowbox)
+        self.date_label.set_markup('<span foreground="green" size="large">%s</span>' % value)
+        self.box.pack_start(Gtk.HSeparator(), True, True, 1)
+        self.box.pack_start(Gtk.HSeparator(), True, True, 1)
+        self.box.add(self.date_label)
+        self.box.pack_start(Gtk.HSeparator(), True, True, 1)
+        self.box.pack_start(Gtk.HSeparator(), True, True, 1)
+        self.box.pack_start(button, True, True, 1)
+        self.show_all()
+    
+    def on_date_entry_cleared(self, entry):
+        txt = entry.get_text()
+        if txt:
+            return
+        if self.ad_to_bs:
+            today = datetime.date.today()
+            self.cal.select_month(month=today.month, year=today.year)
+            self.cal.select_day(today.day)
+        else:
+            self.nepali_cal_flowbox()
+    
+    def date_entry_clicked(self, button):
+        entry_text = self.date_entry.get_text()
+        slash_text = '/' in entry_text
+        dash_text = '-' in entry_text
+        if not (slash_text or entry_text):
+            self.date_entry.set_text('Wrong Date')
+            return
+        date_data = entry_text.split('-' if dash_text else '/')
+        if len(date_data) != 3:
+            self.date_entry.set_text('Wrong Date')
+            return
+        data = {}
+        try:
+            data['year'] = int(date_data[0])
+            data['month'] = int(date_data[1])
+            data['today'] = int(date_data[2])
+        except ValueError:
+            try:
+                data['year'] = self.converter.nep_to_eng_num(date_data[0])
+                data['month'] = self.converter.nep_to_eng_num(date_data[1])
+                data['today'] = self.converter.nep_to_eng_num(date_data[2])
+            except:
+                return
+        except:
+            return
+        if self.ad_to_bs:
+            day = data.pop('today', 0)
+            self.cal.select_month(**data)
+            self.cal.select_day(day)
+        else:
+            self.show_converted_date(button, data)
+            
+    
+    def on_day_button_clicked(self, button, user_data):
+        button.set_sensitive(False)
+        self.show_converted_date(button, {'today': user_data})
+    
+    def get_year_val_from_label(self):
+        year_value = self.year_label.get_label()
+        return self.converter.nep_to_eng_num(year_value)
+    
+    def on_prev_clicked_month(self, button, user_data):
+        month_value =  self.combobox_month.get_active()
+        if month_value == 0:
+            month_value = 11
+            if user_data:
+                user_data['show_cal'] = False
+                self.on_prev_clicked_year(button, user_data)
+        else:
+            month_value -= 1
+        self.combobox_month.set_active(month_value)
+    
+    def on_next_clicked_month(self, button, user_data):
+        month_value =  self.combobox_month.get_active()
+        if month_value == 11:
+            if user_data:
+                user_data['show_cal'] = False
+                self.on_next_clicked_year(button, user_data)
+            month_value = 0
+        else:
+            month_value += 1
+        self.combobox_month.set_active(month_value)
+    
+    def get_year_val_from_label(self):
+        year_value = self.year_label.get_label()
+        return self.converter.nep_to_eng_num(year_value)
+
+    def on_prev_clicked_year(self, button, user_data):
+        year_value = self.get_year_val_from_label()
+        show_cal = True
+        if user_data:
+            show_cal = user_data.pop('show_cal', True)
+            start, end = user_data.get('start'), user_data.get('end')
+            if start > year_value > end:
+                return
+        self.year_label.set_label(self.converter.eng_to_nep_num(year_value-1))
+        if show_cal:
+            self.show_converted_date(button, user_data)
+    
+    def on_next_clicked_year(self, button, user_data):
+        year_value = self.get_year_val_from_label()
+        show_cal = True
+        if user_data:
+            show_cal = user_data.pop('show_cal', True)
+            start, end = user_data.get('start'), user_data.get('end')
+            if start > year_value > end:
+                return
+        self.year_label.set_label(self.converter.eng_to_nep_num(year_value+1))
+        if show_cal:
+            self.show_converted_date(button, user_data)
+
+    def on_close_clicked(self, button):
+        self.destroy()
+
+    def show_converted_date(self, widget, user_data):
+        month_value = None
+        year_value = None
+        if user_data:
+            month_value = user_data.get('month')
+            year_value = user_data.get('year')
+            day_value = user_data.get('today')
+        else:
+            day_value =  None
+        if month_value is None:
+            month_value =  self.combobox_month.get_active()+1
+        if year_value is None:
+            year_value = self.get_year_val_from_label()
+        if not self.can_bs_converted(year_value):
+            return
+        upper_day = self.converter.get_total_day_of_month(year_value, month_value-1, False)
+        bs_to_ad_tuple = self.converter.bs_to_ad((year_value, month_value, min(day_value, upper_day))) 
+        value = self.converter.get_date_ad_label(bs_to_ad_tuple) if bs_to_ad_tuple else self.converter.get_today_ad_label()
+        self.date_label.set_markup('<span foreground="green" size="large">%s</span>' % value)
+        self.nepali_cal_flowbox(today=day_value, month=month_value, year=year_value, today_ad=self.converter.date_from_tuple(bs_to_ad_tuple))
+        
+class NepaliDateIndicator:
+    win = None
+    def __init__(self):
+        self.indicator = AppIndicator3.Indicator.new("nepali-date-indicator",
+                                           "calendar-tray", AppIndicator3.IndicatorCategory.OTHER)
+        self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+        self.menu_setup()
+        self.indicator.set_menu(self.menu)
+
+    def menu_setup(self):
+        self.menu = Gtk.Menu()
+        self.to_bs_menu = Gtk.MenuItem("ई.सं. बाट बि.सं.")
+        self.to_ad_menu = Gtk.MenuItem("बि.सं. बाट ई.सं.")
+        self.to_ad_menu.connect("activate", self.show_ad_converter)
+        self.to_bs_menu.connect("activate", self.show_bs_converter)
+        self.to_ad_menu.show()
+        self.to_bs_menu.show()
+        self.quit_item = Gtk.MenuItem("बन्द")
+        self.quit_item.connect("activate", self.quit)
+        self.quit_item.show()
+
+    def set_date_label(self):
+        self.indicator.set_label(self.nep_date.get_today_bs_label(True), "")
+        return True
+
+    def main(self):
+        self.nep_date = NepaliDateConverter()
+        self.indicator.set_label(self.nep_date.get_today_bs_label(True), "")
+        GObject.timeout_add_seconds(300, self.set_date_label)
+        self.menu.append(self.to_bs_menu)
+        self.menu.append(self.to_ad_menu)
+        self.menu.append(self.quit_item)
+        Gtk.main()
+
+    def quit(self, widget):
+        widget.destroy()
+        sys.exit(0)
+
+    def create_window(self, title, **kwargs):
+        if self.win:
+            if self.win.get_title() != title:
+                self.win.destroy()
+            elif self.win.is_visible():
+                return
+        self.win = ConverterDialog(title, **kwargs)
+        self.win.connect("delete-event", Gtk.main_quit)
+        Gtk.main()
+
+    @staticmethod
+    def make_adjustment(value, lower=1, upper=32):
+        adj =  Gtk.Adjustment()
+        adj.set_lower(float(lower))
+        adj.set_upper(float(upper))
+        adj.set_value(float(value))
+        adj.set_step_increment(1.0)
+        adj.set_page_increment(10.0)
+        adj.set_page_size(0.0)
+        return adj
+    
+    def show_ad_converter(self, widget):
+        title = "बि.सं. बाट ई.सं. परिवर्तन"
+        start_year = min(NepaliDateConverter.bs.keys())
+        end_year = max(NepaliDateConverter.bs.keys())
+        self.create_window(title, start=start_year, end=end_year)
+
+    def show_bs_converter(self, widget):
+        title = "ई.सं. बाट बि.सं. परिवर्तन"
+        start_year = max(NepaliDateConverter.ad_equiv)
+        end_year = start_year + len(NepaliDateConverter.bs.keys())
+        self.create_window(title, start=start_year, end=end_year, ad_to_bs=True)
+
+if __name__ == "__main__":
+    NepaliDateIndicator().main()
