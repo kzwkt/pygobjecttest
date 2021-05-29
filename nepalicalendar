@@ -4,7 +4,7 @@ import sys
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
-from gi.repository import Gtk ,GObject
+from gi.repository import Gtk ,GLib
 from gi.repository import AppIndicator3 
 APPINDICATOR_ID = 'cndbappindicator'
 import datetime
@@ -471,7 +471,7 @@ class ConverterDialog(Gtk.Dialog):
         Gtk.Dialog.__init__(self, title=title, parent=None, flags=1)
         self.set_resizable(False)
         self.set_size_request(200, 200)
-        button = Gtk.Button("_Close", use_underline=True)
+        button = Gtk.Button(label="_Close", use_underline=True)
         button.connect("clicked", self.on_close_clicked)
         self.ad_to_bs = kwargs.get('ad_to_bs', False)
         self.box = self.get_content_area()
@@ -677,13 +677,13 @@ class NepaliDateIndicator:
 
     def menu_setup(self):
         self.menu = Gtk.Menu()
-        self.to_bs_menu = Gtk.MenuItem("ई.सं. बाट बि.सं.")
-        self.to_ad_menu = Gtk.MenuItem("बि.सं. बाट ई.सं.")
+        self.to_bs_menu = Gtk.MenuItem(label="ई.सं. बाट बि.सं.")
+        self.to_ad_menu = Gtk.MenuItem(label="बि.सं. बाट ई.सं.")
         self.to_ad_menu.connect("activate", self.show_ad_converter)
         self.to_bs_menu.connect("activate", self.show_bs_converter)
         self.to_ad_menu.show()
         self.to_bs_menu.show()
-        self.quit_item = Gtk.MenuItem("बन्द")
+        self.quit_item = Gtk.MenuItem(label="बन्द")
         self.quit_item.connect("activate", self.quit)
         self.quit_item.show()
 
@@ -694,7 +694,7 @@ class NepaliDateIndicator:
     def main(self):
         self.nep_date = NepaliDateConverter()
         self.indicator.set_label(self.nep_date.get_today_bs_label(True), "")
-        GObject.timeout_add_seconds(300, self.set_date_label)
+        GLib.timeout_add_seconds(300, self.set_date_label)
         self.menu.append(self.to_bs_menu)
         self.menu.append(self.to_ad_menu)
         self.menu.append(self.quit_item)
@@ -702,9 +702,9 @@ class NepaliDateIndicator:
 
     def quit(self, widget):
         widget.destroy()
-        sys.exit(0)
+        sys.exit(0)title
 
-    def create_window(self, title, **kwargs):
+    def create_window(self, , **kwargs):
         if self.win:
             if self.win.get_title() != title:
                 self.win.destroy()
